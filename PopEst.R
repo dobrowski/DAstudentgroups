@@ -25,4 +25,10 @@ chronic <- tbl(con, "DASH_CHRONIC") %>%
     ) %>% 
     collect()
 
+chronic.sent <- chronic %>%
+    mutate(sentence = paste0(studentgroup," =~ ", floor( currdenom*.20) ," / ", currdenom))
+
+
+
+
 ### End ------
