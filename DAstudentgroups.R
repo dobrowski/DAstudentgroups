@@ -1,9 +1,15 @@
 
+# This script pulls from the state data files and says which student groups lead a district 
+# to be eligible for Differentiated Assistance, and which priority areas and subsequent indicators 
+# lead to that. 
+
+### Libraries -------
+
 library(tidyverse)
 library(here)
 library(readxl)
 
-
+### Import Files -------
 
 da2017 <- read_excel(here("data", "assistance-status.xls" ), range = "A5:V941") %>% mutate(Year = 2017)
 
@@ -16,6 +22,14 @@ codes <- read_excel(here("data", "assistancestatus19-rev.xlsx" ), sheet = "Value
 
 da.all <- da2019 %>% bind_rows(da2018) %>% bind_rows(da2017)
 
+priors <- tribble(~ "Priority Area", ~ "Criteria",
+                 "P4","Red on ELA and Math, Red on one and Orange on other for ELA Math, Red on ELPI",
+                 "P5","Red on graduation or Red on chronic absenteeism",
+                 "P6", "Red on Suspension",
+                 "P8","Red on College/Career")
+
+
+### Identify schools and priority areas ------
 
 da.mry.grp <- da.all %>% 
     filter(Countyname == "Monterey") %>% 
@@ -25,3 +39,19 @@ da.mry.grp <- da.all %>%
     na.omit() %>%
     mutate(name = str_remove(name, "priorities") ) %>% 
     left_join(codes, c("value" = "Value"))
+
+
+da.mry.grp.split <- da.mry.grp %>%
+    mutate(P4 = if_else(str_detect(Description,"4") , TRUE,FALSE),
+           P5 = if_else(str_detect(Description,"5") , TRUE,FALSE),
+           P6 = if_else(str_detect(Description,"6") , TRUE,FALSE),
+           P8 = if_else(str_detect(Description,"8") , TRUE,FALSE))  %>%
+    pivot_longer(cols = P4:P8,
+                 names_to = "Priority Area",
+                 values_to = "Met",
+                 names_repair = "unique") %>%
+    filter(Met == TRUE) %>%
+    left_join(priors)
+
+
+### End --------
