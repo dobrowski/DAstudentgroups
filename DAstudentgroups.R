@@ -41,6 +41,7 @@ da.mry.grp <- da.all %>%
     mutate(name = str_remove(name, "priorities") ) %>% 
     left_join(codes, c("value" = "Value"))
 
+write_rds(da.mry.grp, here("data", "da-mry-grp.rds"))
 
 da.mry.grp.split <- da.mry.grp %>%
     mutate(P4 = if_else(str_detect(Description,"4") , TRUE,FALSE),
@@ -68,10 +69,8 @@ inders <- da.mry.grp.split %>%
 
 grouper <- da.mry.grp %>%
     filter(CDS == cdscoder) %>%
-    select(CDS, name) %>%
-    distinct()
-
-groups <- grouper$name
-
+    select(name) %>%
+    distinct() %>%
+    unlist()
 
 ### End --------

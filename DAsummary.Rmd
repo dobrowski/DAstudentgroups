@@ -1,0 +1,325 @@
+---
+title: "DA Summary Info"
+
+output: 
+    html_document:
+        theme: readable
+params:
+    dist: "27661590000000"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(here)
+library(rmarkdown)
+library(knitr)
+library(tidyverse)
+library(glue)
+library(readxl)
+library(MCOE)
+library(ggthemes)
+library(reactable)
+
+options(scipen=999)
+
+dist <- params$dist
+
+con <- MCOE::mcoe_sql_con()
+
+thresh <- tribble(
+    ~ "ind", ~"threshold", ~"direction",
+    "chronic", .2, "lower",
+    "grad", .68, "higher",
+    "cci", .099, "higher",
+    "susp", .09, "lower",
+    "elpi",.35, "higher"
+)
+
+
+
+
+da.mry.grp <- read_rds(here("data","da-mry-grp.rds"))
+
+
+priors <- tribble(~ "Priority Area", ~ "Criteria", ~"Indicators",
+                 "P4","Red on ELA and Math, Red on one and Orange on other for ELA Math, Red on ELPI", c("ela", "math", "elpi"),
+                 "P5","Red on graduation or Red on chronic absenteeism", c("grad","chronic"),
+                 "P6", "Red on Suspension", "susp",
+                 "P8","Red on College/Career", "cci"
+                 )
+
+
+da.mry.grp.split <- da.mry.grp %>%
+    mutate(P4 = if_else(str_detect(Description,"4") , TRUE,FALSE),
+           P5 = if_else(str_detect(Description,"5") , TRUE,FALSE),
+           P6 = if_else(str_detect(Description,"6") , TRUE,FALSE),
+           P8 = if_else(str_detect(Description,"8") , TRUE,FALSE))  %>%
+    pivot_longer(cols = P4:P8,
+                 names_to = "Priority Area",
+                 values_to = "Met",
+                 names_repair = "unique") %>%
+    filter(Met == TRUE) %>%
+    left_join(priors)
+
+# Determine list of indicators of interest
+
+inders <- da.mry.grp.split %>%
+    filter(CDS == dist) %>%
+    select(Indicators) %>%
+    distinct() %>%
+    unlist()
+
+# Determine list of student groups of interest
+
+grouper <- da.mry.grp %>%
+    filter(CDS == dist) %>%
+    select(name) %>%
+    distinct() %>%
+    unlist()
+
+
+dist.name <- da.mry.grp %>%
+    filter(CDS == dist) %>%
+    select(LEAname) %>%
+    distinct() %>%
+    unlist()
+
+```
+
+
+
+---
+title: `r dist.name` Differentiated Assistance Summary Report
+---
+
+
+## Report Purpose
+
+
+This report is created to synthesize information to assist districts in reflecting on the student groups for whom indicators led to Differentiated Assistance. 
+
+
+## Latest Status by Group
+
+Insert the image of all student groups
+
+
+```{r status}
+
+# da.mry.grp.split %>%
+#     filter(CDS == dist) %>%
+#     select(Year, name,`Priority Area`, Criteria )  %>%
+#     group_by(Year) %>%
+#     kbl() %>% 
+#     kable_styling()
+
+
+pal <- c("0" = "white",
+         "1" = "red",
+         "2" = "orange",
+         "3" = "yellow",
+         "4" = "green",
+         "5" = "blue")
+
+
+graphthis <- tbl(con, "DASH_ALL") %>%
+        filter(#county_code == "27",
+          #  districtname == "Salinas U High" ,
+            CDScode == dist,
+
+            rtype == "D",
+   #         ind == indi,
+            # studentgroup == "ALL"
+            countyname == "Monterey",
+        ) %>% 
+        collect() %>%
+    mutate(combo.name = paste0(districtname," - ",schoolname),
+           bestname = if_else(rtype =="D",districtname,schoolname)) %>%
+    filter(year == max(year))
+
+
+ggplot(graphthis, aes(ind, y = fct_rev(studentgroup))) + 
+    geom_tile(aes(fill = color.factor)) +
+    lemon::facet_rep_wrap(~bestname, repeat.tick.labels = TRUE) + # If not using lemon, jsut use facet_wrap
+    scale_fill_manual(values = pal) +
+    theme_minimal()  +
+    theme(legend.position = "none") +
+    labs(x="",
+         y="",
+         title = paste0("Differentiated Assistance for " ),
+         caption = "capt")
+
+
+
+
+
+
+```
+
+
+
+## Qualifying Groups
+
+
+```{r qualifying}
+
+# da.mry.grp.split %>%
+#     filter(CDS == dist) %>%
+#     select(Year, name,`Priority Area`, Criteria )  %>%
+#     group_by(Year) %>%
+#     kbl() %>% 
+#     kable_styling()
+# 
+# da.mry.grp.split %>%
+#     filter(CDS == dist) %>%
+#     select(Year, name,`Priority Area`, Criteria )  %>%
+#     group_by(Year) %>%
+#     gt(rowname_col = "name")
+
+
+da.mry.grp.split %>%
+    filter(CDS == dist) %>%
+    select(Year, name,`Priority Area`, Criteria )  %>%
+    reactable(groupBy = c("Year", "name"),
+                         defaultExpanded = TRUE,
+                         resizable = TRUE)
+
+```
+
+
+## Historical Graphs for Eligible Groups 
+
+
+
+```{r historic}
+
+
+graphit <- function(indi, groups){
+    tbl(con, "DASH_ALL") %>%
+        filter(#county_code == "27",
+          #  districtname == "Salinas U High" ,
+            CDScode == dist,
+            #      YEAR == max(YEAR),
+            rtype == "D",
+            ind == indi,
+            # studentgroup == "ALL"
+            countyname == "Monterey",
+        ) %>% 
+        collect() %>%
+        filter(studentgroup %in% groups) %>%
+        ggplot(aes(y = currstatus/100, group = studentgroup, x = year, color = studentgroup)) +
+        geom_line() +
+        geom_point() +
+        mcoe_theme +
+        scale_color_few() + 
+        scale_y_continuous(labels = scales::percent) +
+        labs(title = paste0(indi, " Historical Rates "),
+             #            subtitle = sub.title,
+             caption = "CA Dashboard",
+             color = "")
+    
+}
+
+
+
+
+# 
+# graphit("chronic",c("ALL", grouper))
+# 
+# 
+# graphit("grad",c("ALL" ,grouper))
+# 
+# 
+# graphit("susp",c("ALL",grouper))
+
+
+
+
+for (i in inders) {
+
+graphit(i,c("ALL", grouper))
+
+}
+
+
+```
+
+
+## Pandemic Data for Eligible Groups 
+
+Would need to ask the district for this or wait until CDE post things, but I don’t think that will be for a while. 
+
+* Assessment data for 2020-21
+* results from school climate surveys
+* course access data 
+* teacher assignment information 
+* Pupil engagement, with a focus on locally collected data on pupil classroom attendance and engagement
+* annual IEP meetings
+* assessments for eligibility for special education services
+* Implementation of integrated and designated ELD instruction
+
+
+## Status Needed to Avoid DA in 2022
+
+The thresholds below are based on the Very Low status on the 5x5 grids used in 2019 and the number of students in the calculation in 2019.  Policies may change cutpoints and the student population this year may have shifted from 2019. 
+
+
+```{r targets, message=FALSE}
+
+sentence <- function(indi, groups){
+    tbl(con, "DASH_ALL") %>%
+        filter(#county_code == "27",
+            #  districtname == "Salinas U High" ,
+            CDScode == dist,
+           # YEAR == max(YEAR),
+            rtype == "D",
+            ind == indi,
+            # studentgroup == "ALL"
+            countyname == "Monterey",
+        ) %>% 
+        collect() %>%
+        filter(studentgroup %in% groups) %>%
+        left_join(thresh) %>%
+        mutate(sentence_short = paste0(studentgroup," =~ ",
+                                if_else(direction == "lower", floor( currdenom*threshold), ceiling( currdenom*threshold) ) ,
+                                 " / ", currdenom),
+               sentence_full = paste0(studentgroup," should have ", direction, " than ",
+                                      if_else(direction == "lower", floor( currdenom*threshold), ceiling( currdenom*threshold) ) ,
+                                      " students qualify based on the count in 2019 of ", currdenom, " to not be in Red.")
+                   ) %>%
+        filter(year == max(year)) %>%
+        select(ind, threshold ,sentence_short, sentence_full)
+
+    
+}
+
+sentence.frame  <- sentence("susp", grouper) %>%
+    filter(ind == "")
+
+for (i in inders) {
+    
+    temp1 <- sentence(i, grouper)
+    
+    sentence.frame <- sentence.frame %>%
+        bind_rows(temp1)
+    
+}
+
+sentence.frame %>%
+    reactable(groupBy = c("ind"),
+              defaultExpanded = FALSE,
+              resizable = TRUE,
+                columns = list(
+    ind = colDef(name = "Indicator", align = "left"),
+    threshold = colDef(name = "Threshold",
+                       align = "right",
+                       format = colFormat(percent = TRUE, digits = 1)),
+    sentence_short = colDef(name = "Summary"),
+    sentence_full = colDef(name = "Target")
+    )
+    )
+
+```
+
+

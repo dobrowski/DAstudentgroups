@@ -47,7 +47,7 @@ sentence <- function(indi, groups){
         filter(#county_code == "27",
             #  districtname == "Salinas U High" ,
             CDScode == cdscoder,
-            #      YEAR == max(YEAR),
+           # YEAR == max(YEAR),
             rtype == "D",
             ind == indi,
             # studentgroup == "ALL"
@@ -56,24 +56,21 @@ sentence <- function(indi, groups){
         collect() %>%
         filter(studentgroup %in% groups) %>%
         left_join(thresh) %>%
-        mutate(sentence = paste0(studentgroup," =~ ",
+        mutate(sentence_short = paste0(studentgroup," =~ ",
                                 if_else(direction == "lower", floor( currdenom*threshold), ceiling( currdenom*threshold) ) ,
                                  " / ", currdenom),
                sentence_full = paste0(studentgroup," should have ", direction, " than ",
                                       if_else(direction == "lower", floor( currdenom*threshold), ceiling( currdenom*threshold) ) ,
                                       " students qualify based on the count in 2019 of ", currdenom, " to not be in Red.")
-                   )
-    # mutate(sentence = if_else( direction == "lower" , 
-    #     glue('{studentgroup} =~ {floor( currdenom*threshold)} / {currdenom}'),
-    #            glue('{studentgroup} =~ {ceiling( currdenom*threshold)} / {currdenom}')
-    # )
-    # )
-    
+                   ) %>%
+        filter(year == max(year)) %>%
+        select(ind, threshold ,sentence_short, sentence_full)
+
     
 }
 
 
-temp <- sentence("susp",c("EL","SWD", "HOM", "ALL"))
+temp <- sentence("susp",c("EL","SWD", "HOM", "ALL")) 
 
 
 
