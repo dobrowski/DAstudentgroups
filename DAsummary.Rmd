@@ -3,13 +3,15 @@ title: "DA Summary Info"
 
 output: 
     html_document:
-        theme: readable
+    theme: readable
 params:
     dist: "27661590000000"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE , message=FALSE)
+
+
 
 library(here)
 library(rmarkdown)
@@ -20,12 +22,18 @@ library(readxl)
 library(MCOE)
 library(ggthemes)
 library(reactable)
+library(googlesheets4)
 
 options(scipen=999)
 
 dist <- params$dist
 
 con <- MCOE::mcoe_sql_con()
+
+sheet_id <- "https://docs.google.com/spreadsheets/d/1_EmvLQq-cUe8Ist_WYGJFgdjD27dajpfSbEd_djvbsc/edit#gid=0"
+
+codebook <- read_sheet(sheet_id,
+                       col_types = "ccccccD")
 
 thresh <- tribble(
     ~ "ind", ~"threshold", ~"direction",
@@ -107,14 +115,6 @@ Insert the image of all student groups
 
 ```{r status}
 
-# da.mry.grp.split %>%
-#     filter(CDS == dist) %>%
-#     select(Year, name,`Priority Area`, Criteria )  %>%
-#     group_by(Year) %>%
-#     kbl() %>% 
-#     kable_styling()
-
-
 pal <- c("0" = "white",
          "1" = "red",
          "2" = "orange",
@@ -122,8 +122,13 @@ pal <- c("0" = "white",
          "4" = "green",
          "5" = "blue")
 
+cd.students <- codebook %>% 
+    filter(table == "DASH_SUSP",
+           field_name == "studentgroup") %>%
+    select(studentgroup = variable, studentgroup_long = definition)
 
-graphthis <- tbl(con, "DASH_ALL") %>%
+
+all.colors <- tbl(con, "DASH_ALL") %>%
         filter(#county_code == "27",
           #  districtname == "Salinas U High" ,
             CDScode == dist,
@@ -136,10 +141,12 @@ graphthis <- tbl(con, "DASH_ALL") %>%
         collect() %>%
     mutate(combo.name = paste0(districtname," - ",schoolname),
            bestname = if_else(rtype =="D",districtname,schoolname)) %>%
-    filter(year == max(year))
+    filter(year == max(year)) %>%
+    left_join(cd.students) %>%
+    filter(color.factor != 0)
 
 
-ggplot(graphthis, aes(ind, y = fct_rev(studentgroup))) + 
+ggplot(all.colors, aes(ind, y = fct_rev(studentgroup_long))) + 
     geom_tile(aes(fill = color.factor)) +
     lemon::facet_rep_wrap(~bestname, repeat.tick.labels = TRUE) + # If not using lemon, jsut use facet_wrap
     scale_fill_manual(values = pal) +
@@ -147,12 +154,10 @@ ggplot(graphthis, aes(ind, y = fct_rev(studentgroup))) +
     theme(legend.position = "none") +
     labs(x="",
          y="",
-         title = paste0("Differentiated Assistance for " ),
-         caption = "capt")
-
-
-
-
+         title = paste0("Dashboard Colors by Student Group" ),
+         subtitle = "For latest available year",
+         caption = paste0("https://www.caschooldashboard.org/reports/",dist,"/2019")
+    )
 
 
 ```
@@ -164,25 +169,11 @@ ggplot(graphthis, aes(ind, y = fct_rev(studentgroup))) +
 
 ```{r qualifying}
 
-# da.mry.grp.split %>%
-#     filter(CDS == dist) %>%
-#     select(Year, name,`Priority Area`, Criteria )  %>%
-#     group_by(Year) %>%
-#     kbl() %>% 
-#     kable_styling()
-# 
-# da.mry.grp.split %>%
-#     filter(CDS == dist) %>%
-#     select(Year, name,`Priority Area`, Criteria )  %>%
-#     group_by(Year) %>%
-#     gt(rowname_col = "name")
-
-
 da.mry.grp.split %>%
     filter(CDS == dist) %>%
     select(Year, name,`Priority Area`, Criteria )  %>%
     reactable(groupBy = c("Year", "name"),
-                         defaultExpanded = TRUE,
+                         defaultExpanded = FALSE,
                          resizable = TRUE)
 
 ```
@@ -193,7 +184,6 @@ da.mry.grp.split %>%
 
 
 ```{r historic}
-
 
 graphit <- function(indi, groups){
     tbl(con, "DASH_ALL") %>%
@@ -214,32 +204,24 @@ graphit <- function(indi, groups){
         mcoe_theme +
         scale_color_few() + 
         scale_y_continuous(labels = scales::percent) +
-        labs(title = paste0(indi, " Historical Rates "),
-             #            subtitle = sub.title,
-             caption = "CA Dashboard",
+        labs(title = paste0( case_when( indi == "susp" ~ "Suspension",
+                                        indi == "grad" ~ "Graduation Rate",
+                                        indi == "cci" ~ "College / Career",
+                                        indi == "chronic" ~ "Chronic Absenteeism",
+                                        indi == "elpi" ~ "English Language Progress",
+                                        indi == "math" ~ "Math",
+                                        indi == "ela" ~ "English Language Arts"),
+                            " Historical Rates for ",
+                            dist.name),
+             caption = "https://www.cde.ca.gov/ta/ac/cm/index.asp",
              color = "")
     
 }
 
-
-
-
-# 
-# graphit("chronic",c("ALL", grouper))
-# 
-# 
-# graphit("grad",c("ALL" ,grouper))
-# 
-# 
-# graphit("susp",c("ALL",grouper))
-
-
-
-
 for (i in inders) {
 
-graphit(i,c("ALL", grouper))
-
+p <- graphit(i,c("ALL", grouper))
+print(p)
 }
 
 
@@ -265,7 +247,7 @@ Would need to ask the district for this or wait until CDE post things, but I don
 The thresholds below are based on the Very Low status on the 5x5 grids used in 2019 and the number of students in the calculation in 2019.  Policies may change cutpoints and the student population this year may have shifted from 2019. 
 
 
-```{r targets, message=FALSE}
+```{r targets}
 
 sentence <- function(indi, groups){
     tbl(con, "DASH_ALL") %>%
