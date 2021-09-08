@@ -22,11 +22,12 @@ codes <- read_excel(here("data", "assistancestatus19-rev.xlsx" ), sheet = "Value
 
 da.all <- da2019 %>% bind_rows(da2018) %>% bind_rows(da2017)
 
-priors <- tribble(~ "Priority Area", ~ "Criteria",
-                 "P4","Red on ELA and Math, Red on one and Orange on other for ELA Math, Red on ELPI",
-                 "P5","Red on graduation or Red on chronic absenteeism",
-                 "P6", "Red on Suspension",
-                 "P8","Red on College/Career")
+priors <- tribble(~ "Priority Area", ~ "Criteria", ~"Indicators",
+                 "P4","Red on ELA and Math, Red on one and Orange on other for ELA Math, Red on ELPI", c("ela", "math", "elpi"),
+                 "P5","Red on graduation or Red on chronic absenteeism", c("grad","chronic"),
+                 "P6", "Red on Suspension", "susp",
+                 "P8","Red on College/Career", "cci"
+                 )
 
 
 ### Identify schools and priority areas ------
@@ -52,6 +53,25 @@ da.mry.grp.split <- da.mry.grp %>%
                  names_repair = "unique") %>%
     filter(Met == TRUE) %>%
     left_join(priors)
+
+
+
+# Determine list of indicators of interest
+
+inders <- da.mry.grp.split %>%
+    filter(CDS == cdscoder) %>%
+    select(Indicators) %>%
+    distinct() %>%
+    unlist()
+
+# Determine list of student groups of interest
+
+grouper <- da.mry.grp %>%
+    filter(CDS == cdscoder) %>%
+    select(CDS, name) %>%
+    distinct()
+
+groups <- grouper$name
 
 
 ### End --------

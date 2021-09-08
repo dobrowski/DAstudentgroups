@@ -7,6 +7,7 @@
 
 library(MCOE)
 library(tidyverse)
+library(ggthemes)
 
 options(scipen=999)
 
@@ -14,7 +15,6 @@ con <- MCOE::mcoe_sql_con()
 
             
 cdscoder <- 27661590000000
-cdscode <- "002.766159e+13"
 
 graphit <- function(indi, groups){
     tbl(con, "DASH_ALL") %>%
@@ -33,6 +33,7 @@ graphit <- function(indi, groups){
         geom_line() +
         geom_point() +
         mcoe_theme +
+        scale_color_few() + 
         scale_y_continuous(labels = scales::percent) +
         labs(title = paste0(indi, " Historical Rates "),
              #            subtitle = sub.title,
@@ -42,13 +43,13 @@ graphit <- function(indi, groups){
 }
 
 
-graphit("chronic",c("EL","SWD", "HOM", "ALL"))
+graphit("chronic",c("ALL", groups))
 
 
-graphit("grad",c("EL","SWD", "HOM"))
+graphit("grad",c("ALL" ,groups))
 
 
-graphit("susp",c("ALL","EL","SWD", "HOM"))
+graphit("susp",c("ALL",groups))
 
 
 
