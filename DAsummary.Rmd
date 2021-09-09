@@ -5,7 +5,7 @@ output:
   theme: readable
   pdf_document: default
 params:
-  dist: '27660680000000'
+  dist: '27661590000000'
 ---
 
 ```{r setup, include=FALSE}
@@ -28,6 +28,9 @@ options(scipen=999)
 
 # 27661590000000 Salinas Union
 # 27660680000000  SoMoCo
+# 27660350000000 GReenfield
+# 27661910000000 Santa Rita
+
 
 dist <- params$dist
 
@@ -73,21 +76,7 @@ da.mry.grp.split <- da.mry.grp %>%
     filter(Met == TRUE) %>%
     left_join(priors)
 
-# Determine list of indicators of interest
 
-inders <- da.mry.grp.split %>%
-    filter(CDS == dist) %>%
-    select(Indicators) %>%
-    distinct() %>%
-  filter(Indicators != 'c("ela", "math", "elpi")') %>%
-    unlist() 
-
-inders.acad <- da.mry.grp.split %>%
-    filter(CDS == dist) %>%
-    select(Indicators) %>%
-    distinct() %>%
-  filter(Indicators == 'c("ela", "math", "elpi")') %>%
-    unlist() 
 
 # Determine list of student groups of interest
 
@@ -102,6 +91,41 @@ dist.name <- da.mry.grp %>%
     select(LEAname) %>%
     distinct() %>%
     unlist()
+
+# Determine list of indicators of interest
+
+inders.used <- all.colors <- tbl(con, "DASH_ALL") %>%
+        filter(#county_code == "27",
+            CDScode == dist,
+            rtype == "D",
+            countyname == "Monterey",
+        ) %>% 
+  select(year, ind) %>%
+        collect() %>%
+    filter(year == max(year)) %>%
+  distinct() %>%
+  select(ind) %>%
+  unlist()
+
+inders <- da.mry.grp.split %>%
+    filter(CDS == dist) %>%
+    select(Indicators) %>%
+    distinct() %>%
+  filter(Indicators != 'c("ela", "math", "elpi")') %>%
+    unlist() %>% 
+  intersect(inders.used)
+
+inders.acad <- da.mry.grp.split %>%
+    filter(CDS == dist) %>%
+    select(Indicators) %>%
+    distinct() %>%
+  filter(Indicators == 'c("ela", "math", "elpi")') %>%
+    unlist() 
+
+
+inders.acad <-  if("EL" %in% grouper) inders.acad  else inders.acad[inders.acad != "elpi"]
+                                  
+
 
 ```
 
@@ -236,6 +260,49 @@ print(p)
 }
 
 
+graphit.acad <- function(indi, groups){
+    tbl(con, "DASH_ALL") %>%
+        filter(#county_code == "27",
+          #  districtname == "Salinas U High" ,
+            CDScode == dist,
+            #      YEAR == max(YEAR),
+            rtype == "D",
+            ind == indi,
+            # studentgroup == "ALL"
+            countyname == "Monterey",
+        ) %>% 
+        collect() %>%
+        filter(studentgroup %in% groups) %>%
+        ggplot(aes(y = currstatus, group = studentgroup, x = year, color = studentgroup)) +
+        geom_line() +
+        geom_point() +
+        mcoe_theme +
+        scale_color_few() + 
+        scale_y_continuous(breaks = scales::breaks_extended(8), 
+                           expand = expansion(c(0.1, 0.1)) ) +
+  labs(title = paste0( case_when( indi == "susp" ~ "Suspension",
+                                        indi == "grad" ~ "Graduation Rate",
+                                        indi == "cci" ~ "College / Career",
+                                        indi == "chronic" ~ "Chronic Absenteeism",
+                                        indi == "elpi" ~ "English Language Progress",
+                                        indi == "math" ~ "Math",
+                                        indi == "ela" ~ "English Language Arts"),
+                            " Historical Rates for ",
+                            dist.name),
+             caption = "https://www.cde.ca.gov/ta/ac/cm/index.asp",
+             color = "")
+    
+}
+
+for (i in inders.acad[inders.acad != "elpi"]) {
+
+p <- graphit.acad(i,c("ALL", grouper))
+print(p)
+}
+
+
+
+
 ```
 
 
@@ -299,20 +366,6 @@ for (i in inders) {
     
 }
 
-sentence.frame %>%
-    reactable(groupBy = c("ind"),
-              defaultExpanded = FALSE,
-              resizable = TRUE,
-                columns = list(
-    ind = colDef(name = "Indicator", align = "left"),
-    threshold = colDef(name = "Threshold",
-                       align = "right",
-                       format = colFormat(percent = TRUE, digits = 1)),
-    sentence_short = colDef(name = "Summary"),
-    sentence_full = colDef(name = "Target")
-    )
-    )
-
 
 ELdenom <- tbl(con, "DASH_ALL") %>%
         filter(#county_code == "27",
@@ -328,13 +381,46 @@ ELdenom <- tbl(con, "DASH_ALL") %>%
   select(currdenom) %>%
   unlist()
 
-tribble(~"Indicator", ~"Threshold", ~"Summary", ~"Target",
+sentence.frame.acad <- tribble(~"Indicator", ~"Threshold", ~"Summary", ~"Target",
         "ela","-70.1" ,"Each student group" , "Each student group should have a Distance from Standard (DFS) of higher than -70.1 to not be in Red" , 
         "math","-95.1" ,"Each student group" , "Each student group should have a Distance from Standard (DFS) of higher than -95.1 to not be in Red", 
         "elpi","35%" , paste0("EL =~ ", ceiling( ELdenom*.35) ," / ", ELdenom) ,
         paste0("EL should have more than ",
                                   ceiling( ELdenom*.35)  ,
-                                      " students qualify based on the count in 2019 of ", ELdenom, " to not be in Red."))
+                                      " students qualify based on the count in 2019 of ", ELdenom, " to not be in Red.")) %>%
+  filter(Indicator %in% inders.acad)
+
+
+
+sentence.frame %>%
+    reactable(groupBy = c("ind"),
+              defaultExpanded = FALSE,
+              resizable = TRUE,
+                columns = list(
+    ind = colDef(name = "Indicator", align = "left"),
+    threshold = colDef(name = "Threshold",
+                       align = "right",
+                       format = colFormat(percent = TRUE, digits = 1)),
+    sentence_short = colDef(name = "Summary"),
+    sentence_full = colDef(name = "Target")
+    )
+    )
+
+
+
+sentence.frame.acad %>%
+    reactable(groupBy = c("Indicator"),
+              defaultExpanded = FALSE,
+              resizable = TRUE,
+                columns = list(
+    Indicator = colDef( align = "left"),
+    Threshold = colDef(
+                       align = "right"),
+    Summary = colDef(name = "Summary"),
+    Target = colDef(name = "Target")
+    )
+    )
+    
 
 
 
