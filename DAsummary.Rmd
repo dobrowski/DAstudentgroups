@@ -467,5 +467,6 @@ sentence.frame.acad %>%
 
 ----------
 
-This report was generated at `r Sys.time()`
+This report was generated at `r Sys.time()`.
+
 It was developed by [David Dobrowski](https://github.com/dobrowski) at the [Monterey County Office of Education](https://www.montereycoe.org/)
