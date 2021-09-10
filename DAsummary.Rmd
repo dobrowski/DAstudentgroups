@@ -202,6 +202,7 @@ ggplot(all.colors, aes(ind, y = fct_rev(studentgroup_long))) +
 
 ## Qualifying Groups
 
+This table displays which student groups qualified the district in each year.  Moreover, for each student group it shows which Priority Areas and associated indicator criteria for which the student group qualifies.  
 
 ```{r qualifying}
 
@@ -217,6 +218,11 @@ da.mry.grp.split %>%
 
 ## Historical Graphs for Eligible Groups 
 
+
+These graphs represent all of the indicators from Priority Areas that qualified the district in 2018 or 2019.  I've included all qualifying subgroups on each graph, whether this was a qualifying indicator or not, as well as the All Students group for comparisons. 
+
+<details>
+<summary>**Display graphs**</summary>
 
 
 ```{r historic}
@@ -309,23 +315,30 @@ print(p)
 ```
 
 
+</details>
+
+
 ## Pandemic Data for Eligible Groups 
 
-Would need to ask the district for this or wait until CDE post things, but I don’t think that will be for a while. 
+This section represents Pandemic Era data that would be beneficial to review when making plans as well is specific in AB 130 as data for districts in DA to use.  This data is held by the district and has not been publicly shared through CDE.  
+
+<details>
+<summary>**Display details**</summary>
 
 * Assessment data for 2020-21
-* results from school climate surveys
-* course access data 
-* teacher assignment information 
+* Results from school climate surveys
+* Course access data 
+* Teacher assignment information 
 * Pupil engagement, with a focus on locally collected data on pupil classroom attendance and engagement
-* annual IEP meetings
-* assessments for eligibility for special education services
+* Annual IEP meetings
+* Assessments for eligibility for special education services
 * Implementation of integrated and designated ELD instruction
 
+</details>
 
 ## Status Needed to Avoid DA in 2022
 
-The thresholds below are based on the Very Low status on the 5x5 grids used in 2019 and the number of students in the calculation in 2019.  Policies may change cutpoints and the student population this year may shift from 2019. 
+This section attempts to identify the limit on the the number of students for relevent indicators to avoid receiving a red indicator in the 2022 Dashboard.  The thresholds below are based on the Very Low status on the 5x5 grids used in 2019 and the number of students in the calculation in 2019.  State policies may change cutpoints and the student population may shift from 2019. 
 
 
 ```{r targets}

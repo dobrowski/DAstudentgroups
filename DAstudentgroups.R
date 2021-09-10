@@ -74,3 +74,22 @@ grouper <- da.mry.grp %>%
     unlist()
 
 ### End --------
+
+
+
+temp <- tbl(con, "DASH_ALL") %>%
+    filter(#county_code == "27",
+        #  districtname == "Salinas U High" ,
+  #      CDScode == dist,
+        #      YEAR == max(YEAR),
+        rtype == "D",
+  #      ind == indi,
+        # studentgroup == "ALL"
+        countyname == "Monterey",
+    ) %>% 
+    collect()
+
+
+temp3 <- temp %>%
+  select(districtname, DOCType) %>%
+  distinct()
