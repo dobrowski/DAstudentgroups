@@ -387,7 +387,7 @@ cat(paste0("\n\nFor ",case_when( i == "susp" ~ "Suspension",
                                         i == "elpi" ~ "English Language Progress",
                                         i == "math" ~ "Math",
                                         i == "ela" ~ "English Language Arts"),
-           " you can see a difference between the student groups.  For example, ", comp[1,1], " is above ", comp[nrow(comp),1], " by ", comp[1,2]-comp[nrow(comp),2],".",  # co
+           " you can see a difference between the student groups.  For example, ", comp[1,1], " is above ", comp[nrow(comp),1], " by ", comp[1,2]-comp[nrow(comp),2]," points.",  # co
            "\n\n"
           ))
 
