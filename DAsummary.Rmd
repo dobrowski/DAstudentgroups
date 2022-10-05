@@ -193,7 +193,11 @@ ggplot( aes(ind, y = fct_rev(studentgroup_long))) +
     lemon::facet_rep_wrap(~bestname, repeat.tick.labels = TRUE) + # If not using lemon, jsut use facet_wrap
     scale_fill_manual(values = pal) +
     theme_minimal()  +
-    theme(legend.position = "none") +
+    theme(legend.position = "none")+ 
+#  theme(          #  In response to request to add grid on top.  It was ugly.
+#   panel.background = element_rect(fill = NA),
+#   panel.ontop = TRUE
+# ) +
     labs(x="",
          y="",
          title = paste0("Dashboard Colors by Student Group in 2019" ),
