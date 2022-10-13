@@ -189,7 +189,10 @@ all.colors <- tbl(con, "DASH_ALL") %>%
 all.colors %>%
   filter(year == max(year)) %>%
 ggplot( aes(ind, y = fct_rev(studentgroup_long))) + 
-    geom_tile(aes(fill = color.factor)) +
+    geom_tile(aes(fill = color.factor),
+                  color = "black",
+                  lwd = .5,
+                  linetype = 1) +
     lemon::facet_rep_wrap(~bestname, repeat.tick.labels = TRUE) + # If not using lemon, jsut use facet_wrap
     scale_fill_manual(values = pal) +
     theme_minimal()  +
@@ -209,7 +212,10 @@ ggplot( aes(ind, y = fct_rev(studentgroup_long))) +
 all.colors %>%
   filter(year == 2018) %>%
 ggplot( aes(ind, y = fct_rev(studentgroup_long))) + 
-    geom_tile(aes(fill = color.factor)) +
+    geom_tile(aes(fill = color.factor),
+                  color = "black",
+                  lwd = .5,
+                  linetype = 1) +
     lemon::facet_rep_wrap(~bestname, repeat.tick.labels = TRUE) + # If not using lemon, jsut use facet_wrap
     scale_fill_manual(values = pal) +
     theme_minimal()  +
