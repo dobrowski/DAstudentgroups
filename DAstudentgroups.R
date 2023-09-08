@@ -8,19 +8,60 @@
 library(tidyverse)
 library(here)
 library(readxl)
+library(janitor)
 
 ### Import Files -------
 
-da2017 <- read_excel(here("data", "assistance-status.xls" ), range = "A5:V941") %>% mutate(Year = 2017)
+da2017 <- read_excel(here("data", "assistance-status.xls" ), range = "A5:V941", ) %>% mutate(Year = 2017) %>% clean_names()
 
-da2018 <- read_excel(here("data", "assistancestatus18.xlsx" ), range = "A3:Z996")  %>% mutate(Year = 2018)
+da2018 <- read_excel(here("data", "assistancestatus18.xlsx" ), range = "A3:Z996")  %>% mutate(Year = 2018) %>% clean_names(parsing_option = 0)
 
-da2019 <- read_excel(here("data", "assistancestatus19-rev.xlsx" ), sheet = "District and COE 2019" , range = "A6:AA1004")  %>% mutate(Year = 2019)
+da2019 <- read_excel(here("data", "assistancestatus19-rev.xlsx" ), sheet = "District and COE 2019" , range = "A6:AA1004")  %>% mutate(Year = 2019) %>% clean_names(parsing_option = 0)
+
+da2022 <- read_excel(here("data", "assistancestatus22.xlsx" ), sheet = "District and COE 2022" , range = "A6:AA999")  %>% mutate(Year = 2022) %>% clean_names(parsing_option = 0)
+
 
 codes <- read_excel(here("data", "assistancestatus19-rev.xlsx" ), sheet = "Value" , range = "A4:B15") %>%
     mutate(Value = str_sub(Value,1,1))
 
-da.all <- da2019 %>% bind_rows(da2018) %>% bind_rows(da2017)
+da.all <- da2022 %>%
+    bind_rows(da2019) %>%
+    bind_rows(da2018) %>%
+    bind_rows(da2017) %>%
+    transmute(cds, leaname, year,
+           aa = coalesce(aapriorities, aa_priorities),
+           ai = coalesce(aipriorities, ai_priorities),
+           as = coalesce(aspriorities, as_priorities),
+           el = coalesce(elpriorities, el_priorities),
+           fi = coalesce(fipriorities, fi_priorities),
+           fos = coalesce(fospriorities, fos_priorities),
+           hi = coalesce(hipriorities, hi_priorities),
+           hom = coalesce(hompriorities, hom_priorities),
+           mr = coalesce(tompriorities, mr_priorities),
+           pi = coalesce(pipriorities, pi_priorities),
+           sed = coalesce(sedpriorities, sed_priorities),
+           swd = coalesce(swdpriorities, swd_priorities),
+           wh = coalesce(whpriorities, wh_priorities)
+           
+           ) %>%
+    pivot_longer(cols = c(aa:wh)) %>%
+    mutate(value = na_if(value, "*")) %>%
+    pivot_wider(names_from = year)
+
+temp <- da.all %>%
+    select(-`2018`,-`2017`) %>%
+#    filter(str_detect(leaname, "Soledad")) %>%
+    mutate(num.years = rowSums(!is.na(.))-3) %>%
+    filter(num.years >=2) %>%
+    group_by(cds) %>%
+    mutate(rows.max = max(row_number()))
+
+
+
+####### older work -------
+
+
+
 
 priors <- tribble(~ "Priority Area", ~ "Criteria", ~"Indicators",
                  "P4","Red on ELA and Math, Red on one and Orange on other for ELA Math, Red on ELPI", c("ela", "math", "elpi"),
