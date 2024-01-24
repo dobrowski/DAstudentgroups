@@ -14,17 +14,25 @@ library(janitor)
 
 da2017 <- read_excel(here("data", "assistance-status.xls" ), range = "A5:V941", ) %>% mutate(Year = 2017) %>% clean_names()
 
-da2018 <- read_excel(here("data", "assistancestatus18.xlsx" ), range = "A3:Z996")  %>% mutate(Year = 2018) %>% clean_names(parsing_option = 0)
+da2018 <- read_excel(here("data", "assistancestatus18.xlsx" ), range = "A3:Z996")  %>%
+    mutate(Year = 2018) %>% clean_names(parsing_option = 0)
 
-da2019 <- read_excel(here("data", "assistancestatus19-rev.xlsx" ), sheet = "District and COE 2019" , range = "A6:AA1004")  %>% mutate(Year = 2019) %>% clean_names(parsing_option = 0)
+da2019 <- read_excel(here("data", "assistancestatus19-rev.xlsx" ), sheet = "District and COE 2019" , range = "A6:AA1004")  %>%
+    mutate(Year = 2019) %>% clean_names(parsing_option = 0)
 
-da2022 <- read_excel(here("data", "assistancestatus22.xlsx" ), sheet = "District and COE 2022" , range = "A6:AA999")  %>% mutate(Year = 2022) %>% clean_names(parsing_option = 0)
+da2022 <- read_excel(here("data", "assistancestatus22.xlsx" ), sheet = "District and COE 2022" , range = "A6:AA999")  %>%
+    mutate(Year = 2022) %>% clean_names(parsing_option = 0)
+
+
+da2023 <- read_excel(here("data", "assistancestatus23.xlsx" ), sheet = "District and COE 2023" , range = "A6:AD996")  %>%
+    mutate(Year = 2023) %>% clean_names(parsing_option = 0)
 
 
 codes <- read_excel(here("data", "assistancestatus19-rev.xlsx" ), sheet = "Value" , range = "A4:B15") %>%
     mutate(Value = str_sub(Value,1,1))
 
-da.all <- da2022 %>%
+da.all <- da2023 %>%
+    bind_rows(da2022) %>%
     bind_rows(da2019) %>%
     bind_rows(da2018) %>%
     bind_rows(da2017) %>%
@@ -48,13 +56,16 @@ da.all <- da2022 %>%
     mutate(value = na_if(value, "*")) %>%
     pivot_wider(names_from = year)
 
-temp <- da.all %>%
-    select(-`2018`,-`2017`) %>%
+da.mry.2.5 <- da.all %>%
+    select(-`2017`, -`2018`) %>%
 #    filter(str_detect(leaname, "Soledad")) %>%
     mutate(num.years = rowSums(!is.na(.))-3) %>%
     filter(num.years >=2) %>%
     group_by(cds) %>%
-    mutate(rows.max = max(row_number()))
+    mutate(rows.max = max(row_number())) %>%
+    ungroup() %>%
+    filter(str_starts( cds,"27" ) ) %>%
+    filter(rows.max >=2)
 
 
 
