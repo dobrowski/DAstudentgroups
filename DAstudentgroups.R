@@ -8,11 +8,13 @@
 library(tidyverse)
 library(here)
 library(readxl)
+library(googlesheets4)
 library(janitor)
 
 ### Import Files -------
 
-da2017 <- read_excel(here("data", "assistance-status.xls" ), range = "A5:V941", ) %>% mutate(Year = 2017) %>% clean_names()
+da2017 <- read_excel(here("data", "assistance-status.xls" ), range = "A5:V941", ) %>%
+    mutate(Year = 2017) %>% clean_names()
 
 da2018 <- read_excel(here("data", "assistancestatus18.xlsx" ), range = "A3:Z996")  %>%
     mutate(Year = 2018) %>% clean_names(parsing_option = 0)
@@ -28,15 +30,62 @@ da2023 <- read_excel(here("data", "assistancestatus23.xlsx" ), sheet = "District
     mutate(Year = 2023) %>% clean_names(parsing_option = 0)
 
 
+da2024 <- read_excel(here("data", "assistancestatus24.xlsx" ), sheet = "District and COE 2024" , range = "A6:AD10043")  %>%
+    mutate(Year = 2024) %>% clean_names(parsing_option = 0)
+
+
+
+
+
+# dash.mry.da.2 <- read_excel(here("data","assistancestatus24.xlsx"),
+#                             range = "A6:AD999",
+#                             sheet = "District and COE 2024") %>%
+#     filter(Countyname == "Monterey") %>%
+#     pivot_longer(cols = ends_with("priorities")) %>%
+#     mutate(indicator2 = case_when(value == "A" ~ "Met Criteria in Priority Areas 4 (Academic Indicators), 5 (Chronic Absenteeism and/or Graduation), and 6 (Suspensions)",
+#                                   value == "B" ~ "Met Criteria in Priority Areas 4 (Academic Indicators) and 5 (Chronic Absenteeism and/or Graduation)",
+#                                   value == "D" ~ "Met Criteria in Priority Areas 4 (Academic Indicators) and 6 (Suspensions)",
+#                                   value == "C" ~ "Met Criteria in Priority Areas 5 (Chronic Absenteeism and/or Graduation) and 6 (Suspensions)",
+#                                   value =="E" ~ 	"Met Criteria in Priority Areas 4 (Academic Indicators) and 8 (College/Career)",
+#                                   value =="F" ~ 	"Met Criteria in Priority Areas 5 (Chronic Absenteeism and/or Graduation) and 8 (College/Career)",
+#                                   value =="G" ~ 	"Met Criteria in Priority Areas 6 (Suspensions) and 8 (College/Career)",
+#                                   value =="H" ~ 	"Met Criteria in Priority Areas 4 (Academic Indicators), 5 (Chronic Absenteeism and/or Graduation), and 8 (College/Career)",
+#                                   value =="I" ~ 	"Met Criteria in Priority Areas 4 (Academic Indicators), 6 (Suspensions), and 8 (College/Career)",
+#                                   value =="J" ~ 	"Met Criteria in Priority Areas 5 (Chronic Absenteeism and/or Graduation), 6 (Suspensions), and 8 (College/Career)",
+#                                   value =="K" ~ 	"Met Criteria in Priority Areas 4 (Academic Indicators), 5 (Chronic Absenteeism and/or Graduation), 6 (Suspensions), and 8 (College/Career)"
+#     ),
+#     studentgroup.long = case_when(name == "AApriorities"	~ "Black/African American",
+#                                   name == "AIpriorities" ~	"American Indian or Alaska Native American",
+#                                   name == "ASpriorities" ~	"Asian American",
+#                                   name == "ELpriorities" ~	"English Learner",
+#                                   name == "LTELpriorities" ~	"Long Term English Learner",
+#                                   name == "FIpriorities" ~	"Filipino",
+#                                   name == "FOSpriorities"	 ~ "Foster Youth",
+#                                   name == "HIpriorities" ~	"Hispanic",
+#                                   name == "HOMpriorities"	~ "Homeless",
+#                                   name == "PIpriorities" ~	"Pacific Islander",
+#                                   name == "SEDpriorities" ~	"Socioeconomically Disadvantaged",
+#                                   name == "SWDpriorities" ~	"Students with Disabilities",
+#                                   name == "TOMpriorities" ~	"Two or More Races",
+#                                   name == "WHpriorities" ~	"White"
+#     ),
+#     cds = CDS
+#     )
+
+
+
+
+
 codes <- read_excel(here("data", "assistancestatus19-rev.xlsx" ), sheet = "Value" , range = "A4:B15") %>%
     mutate(Value = str_sub(Value,1,1))
 
-da.all <- da2023 %>%
+da.all <- da2024 %>%
+    bind_rows(da2023) %>%
     bind_rows(da2022) %>%
     bind_rows(da2019) %>%
     bind_rows(da2018) %>%
     bind_rows(da2017) %>%
-    transmute(cds, leaname, year,
+    transmute(cds, leaname, year, gsoffered,
            aa = coalesce(aapriorities, aa_priorities),
            ai = coalesce(aipriorities, ai_priorities),
            as = coalesce(aspriorities, as_priorities),
@@ -57,7 +106,7 @@ da.all <- da2023 %>%
     pivot_wider(names_from = year)
 
 da.mry.2.5 <- da.all %>%
-    select(-`2017`, -`2018`) %>%
+    select(-`2017`) %>%
 #    filter(str_detect(leaname, "Soledad")) %>%
     mutate(num.years = rowSums(!is.na(.))-3) %>%
     filter(num.years >=2) %>%
@@ -66,6 +115,85 @@ da.mry.2.5 <- da.all %>%
     ungroup() %>%
     filter(str_starts( cds,"27" ) ) %>%
     filter(rows.max >=2)
+
+student.group.potential.3years <- da.all %>%
+    select(-`2017`, -`2018`,-`2019`,) %>%
+    #    filter(str_detect(leaname, "Soledad")) %>%
+    mutate(num.years = rowSums(!is.na(.))-3) %>%
+    filter(num.years >=2) %>%
+    group_by(cds) %>%
+    mutate(rows.max = max(row_number())) %>%
+    ungroup() %>%
+    filter(str_starts( cds,"27" ) )# %>%
+ #   filter(rows.max >=2)
+
+
+
+
+
+
+
+
+#### Spreadsheet of all DA over time -------
+
+
+names<- da.all%>% select(cds,leaname) %>% distinct() %>% na.omit()
+
+
+
+da.mry <- da2017 %>%
+    bind_rows(da2018) %>%
+    bind_rows(da2019) %>%
+    bind_rows(da2022) %>%
+    bind_rows(da2023) %>%
+    transmute(cds, leaname, year,
+              aa = coalesce(aapriorities, aa_priorities),
+              ai = coalesce(aipriorities, ai_priorities),
+              as = coalesce(aspriorities, as_priorities),
+              el = coalesce(elpriorities, el_priorities),
+              fi = coalesce(fipriorities, fi_priorities),
+              fos = coalesce(fospriorities, fos_priorities),
+              hi = coalesce(hipriorities, hi_priorities),
+              hom = coalesce(hompriorities, hom_priorities),
+              mr = coalesce(tompriorities, mr_priorities),
+              pi = coalesce(pipriorities, pi_priorities),
+              sed = coalesce(sedpriorities, sed_priorities),
+              swd = coalesce(swdpriorities, swd_priorities),
+              wh = coalesce(whpriorities, wh_priorities)
+              
+    ) %>%
+    pivot_longer(cols = c(aa:wh)) %>%
+    mutate(value = na_if(value, "*")) %>%
+    filter(str_starts(cds,"27") ) %>%
+    mutate(reason = case_match(value,
+                               "A" ~ "Met in Priority Areas 4, 5, and 6",
+                               "B" ~ "Met in Priority Areas 4 and 5",
+                               "C" ~ "Met in Priority Areas 5 and 6",
+                               "D" ~ "Met in Priority Areas 4 and 6",
+                               "E" ~ 	"Met Criteria in Priority Areas 4 and 8",
+                               "F" ~ 	"Met Criteria in Priority Areas 5 and 8",
+                               "G" ~ 	"Met Criteria in Priority Areas 6 and 8",
+                               "H" ~ 	"Met Criteria in Priority Areas 4, 5, and 8",
+                               "I" ~ 	"Met Criteria in Priority Areas 4, 6, and 8",
+                               "J" ~ 	"Met Criteria in Priority Areas 5, 6, and 8",
+                               "K" ~ 	"Met Criteria in Priority Areas 4, 5, 6, and 8"
+                               )
+    ) %>%
+    pivot_wider(id_cols = c(cds,name),names_from = year, values_from = reason) %>%
+    mutate(num.years = rowSums(!is.na(.))-2) %>%
+    filter(num.years >0) %>%
+    left_join(names) %>%
+ #   select(-value) %>%
+    arrange(leaname, name)
+
+write_sheet(da.mry, 
+            "https://docs.google.com/spreadsheets/d/11p4b2ymZWkCvTbJnomrAM935fBarpuhKMLXLCyBgf1U/edit?gid=678188896#gid=678188896",
+            sheet = "Sheet2")
+
+
+
+
+
 
 
 
